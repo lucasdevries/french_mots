@@ -18,7 +18,7 @@ Deploy it anywhere that serves static files over HTTPS:
   - Netlify:  ./deploy.sh   (or drag `site/` onto https://app.netlify.com/drop)
   - Preview locally:  ./run.sh  -> http://localhost:8002
 
-Progress ("geleerd") is stored per-device in the browser. Re-run this after
+Progress ("learned") is stored per-device in the browser. Re-run this after
 adding/changing a CSV in lists/, then re-deploy.
 
 Same approach as the learn_french project: Python stdlib only, everything
@@ -97,7 +97,7 @@ def solid_png(size, rgb):
 
 
 MANIFEST = {
-    "name": "Mots — NL naar FR",
+    "name": "Mots — NL to FR",
     "short_name": "Mots",
     "start_url": ".",
     "scope": ".",
@@ -149,7 +149,7 @@ self.addEventListener('fetch', e => {
 """
 
 INDEX_HTML = r"""<!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -230,12 +230,12 @@ INDEX_HTML = r"""<!doctype html>
     <div class="row-top">
       <button class="pill" id="startNew"></button>
       <button class="pill" id="startAll"></button>
-      <button class="pill danger" id="resetLesson" style="margin-left:auto">Reset les</button>
+      <button class="pill danger" id="resetLesson" style="margin-left:auto">Reset lesson</button>
     </div>
     <div class="row-top">
-      <button class="pill" id="testBtn">Toets (25)</button>
-      <button class="pill" id="weakBtn">Lastig</button>
-      <button class="pill" id="typeToggle" title="Antwoord zelf typen">⌨️ Typen</button>
+      <button class="pill" id="testBtn">Test (25)</button>
+      <button class="pill" id="weakBtn">Tricky</button>
+      <button class="pill" id="typeToggle" title="Type the answer yourself">⌨️ Type</button>
     </div>
     <div class="count" id="testHint"></div>
   </div>
@@ -246,30 +246,30 @@ INDEX_HTML = r"""<!doctype html>
       <button class="pill" id="stopBtn">← Stop</button>
       <span class="count" id="sessCount" style="margin-left:auto"></span>
     </div>
-    <div class="banner hidden" id="retryBanner">Foute ronde — nog een keer</div>
-    <div class="banner hidden" id="testBanner" style="color:var(--accent)">Toets — telt niet mee voor progress</div>
+    <div class="banner hidden" id="retryBanner">Retry round — once more</div>
+    <div class="banner hidden" id="testBanner" style="color:var(--accent)">Test — doesn't count towards progress</div>
     <div class="fcard">
       <div class="nl" id="cardNl"></div>
       <div class="fr hidden" id="cardFr"></div>
       <div class="hidden" id="typeFb"></div>
       <div class="actions hidden" id="speakRow">
-        <button class="pill" id="speakBtn" title="Spreek uit">🔊</button>
+        <button class="pill" id="speakBtn" title="Pronounce">🔊</button>
       </div>
     </div>
     <div class="actions" id="showActions">
-      <button class="btn" id="showBtn">Toon</button>
+      <button class="btn" id="showBtn">Show</button>
     </div>
     <div class="actions hidden" id="typeActions">
       <input id="typeInput" autocomplete="off" autocapitalize="off" autocorrect="off"
-             spellcheck="false" placeholder="Typ de Franse vertaling…">
+             spellcheck="false" placeholder="Type the French translation…">
       <button class="btn" id="checkBtn">Check</button>
     </div>
     <div class="actions hidden" id="judgeActions">
-      <button class="btn bad" id="badBtn">✗ Fout</button>
-      <button class="btn good" id="goodBtn">✓ Goed</button>
+      <button class="btn bad" id="badBtn">✗ Wrong</button>
+      <button class="btn good" id="goodBtn">✓ Correct</button>
     </div>
     <div class="actions hidden" id="nextActions">
-      <button class="btn good" id="nextBtn">Volgende →</button>
+      <button class="btn good" id="nextBtn">Next →</button>
     </div>
     <p class="hint" id="kbHint"></p>
   </div>
@@ -281,8 +281,8 @@ INDEX_HTML = r"""<!doctype html>
       <div class="count" id="doneDetail"></div>
     </div>
     <div class="actions">
-      <button class="btn" id="againBtn">Opnieuw</button>
-      <button class="btn" id="backBtn">Terug naar lessen</button>
+      <button class="btn" id="againBtn">Again</button>
+      <button class="btn" id="backBtn">Back to lessons</button>
     </div>
   </div>
 </div>
@@ -290,7 +290,7 @@ INDEX_HTML = r"""<!doctype html>
 const $ = s => document.querySelector(s);
 let lessons = [], current = 0;
 
-// Progress ("geleerd") is stored per-device in the browser: {slug: [id, ...]}.
+// Progress ("learned") is stored per-device in the browser: {slug: [id, ...]}.
 let learned = JSON.parse(localStorage.getItem('learned') || '{}');
 function saveLearned() { localStorage.setItem('learned', JSON.stringify(learned)); }
 function learnedSet(slug) { return new Set(learned[slug] || []); }
@@ -300,8 +300,8 @@ function markLearned(slug, id) {
   set.add(id); learned[slug] = [...set]; saveLearned();
 }
 
-// Per-card mistake counter across all lessons: fout -> +1, goed -> -1 (min 0).
-// Cards with a positive count feed the "Lastig" session.
+// Per-card mistake counter across all lessons: wrong -> +1, correct -> -1 (min 0).
+// Cards with a positive count feed the "Tricky" session.
 let wrong = JSON.parse(localStorage.getItem('wrong') || '{}');
 function bumpWrong(id, d) {
   const n = (wrong[id] || 0) + d;
@@ -313,7 +313,7 @@ function weakPool() {
   lessons.forEach(l => l.cards.forEach(c => {
     if (wrong[c.id]) cards.push({ ...c, slug: l.slug, n: wrong[c.id] });
   }));
-  return cards.sort((a, b) => b.n - a.n);  // vaakst fout eerst
+  return cards.sort((a, b) => b.n - a.n);  // most mistakes first
 }
 
 // Theme
@@ -378,27 +378,27 @@ function renderPick() {
   lessons.forEach((l, i) => {
     const d = l.cards.filter(c => learnedSet(l.slug).has(c.id)).length;
     const o = document.createElement('option');
-    o.value = i; o.textContent = `Les ${l.title} — ${d}/${l.total} geleerd`;
+    o.value = i; o.textContent = `Lesson ${l.title} — ${d}/${l.total} learned`;
     sel.appendChild(o);
   });
   sel.value = current;
   const l = lessons[current];
-  if (!l) { $('#pickCount').textContent = 'Geen lessen.'; return; }
+  if (!l) { $('#pickCount').textContent = 'No lessons.'; return; }
   const set = learnedSet(l.slug);
   const d = l.cards.filter(c => set.has(c.id)).length;
   const fresh = l.total - d;
-  $('#pickCount').textContent = `${d} / ${l.total} geleerd`;
+  $('#pickCount').textContent = `${d} / ${l.total} learned`;
   $('#pickBar').style.width = (l.total ? (100 * d / l.total) : 0) + '%';
-  $('#startNew').textContent = `Start nieuwe (${fresh})`;
+  $('#startNew').textContent = `Start new (${fresh})`;
   $('#startNew').disabled = fresh === 0;
-  $('#startAll').textContent = `Start alles (${l.total})`;
+  $('#startAll').textContent = `Start all (${l.total})`;
   const pool = testPool();
   $('#testBtn').disabled = pool.cards.length === 0;
   $('#testHint').textContent = pool.lessons.length
-    ? `uit ${pool.lessons.length} les${pool.lessons.length === 1 ? '' : 'sen'} op 80%+ (${pool.lessons.join(', ')})`
-    : 'nog geen les op 80%+';
+    ? `from ${pool.lessons.length} lesson${pool.lessons.length === 1 ? '' : 's'} at 80%+ (${pool.lessons.join(', ')})`
+    : 'no lesson at 80%+ yet';
   const weak = weakPool();
-  $('#weakBtn').textContent = `Lastig (${Math.min(weak.length, 20)})`;
+  $('#weakBtn').textContent = `Tricky (${Math.min(weak.length, 20)})`;
   $('#weakBtn').disabled = weak.length === 0;
   show('pick');
 }
@@ -422,7 +422,7 @@ $('#lessonSelect').onchange = e => { current = +e.target.value; renderPick(); };
 $('#resetLesson').onclick = () => {
   const l = lessons[current];
   if (!l) return;
-  if (!confirm(`Progress van les ${l.title} wissen?`)) return;
+  if (!confirm(`Clear progress for lesson ${l.title}?`)) return;
   delete learned[l.slug]; saveLearned(); renderPick();
 };
 
@@ -436,7 +436,7 @@ function startSession(mode) {
   if (isTest) {
     cards = shuffle(testPool().cards.slice()).slice(0, 25);
   } else if (mode === 'weak') {
-    cards = weakPool().slice(0, 20);       // vaakst-fout eerst, max 20 per sessie
+    cards = weakPool().slice(0, 20);       // most mistakes first, max 20 per session
   } else {
     const l = lessons[current];
     if (!l) return;
@@ -461,7 +461,7 @@ $('#stopBtn').onclick = () => renderPick();
 
 function nextCard() {
   if (!queue.length) {
-    if (!isTest && !inRetry && retryQueue.length) {   // foute ronde aan het eind
+    if (!isTest && !inRetry && retryQueue.length) {   // retry round at the end
       inRetry = true;
       queue = shuffle(retryQueue.slice()); retryQueue = [];
       roundTotal = queue.length; roundDone = 0;
@@ -479,11 +479,11 @@ function nextCard() {
   $('#speakRow').classList.add('hidden');
   $('#judgeActions').classList.add('hidden');
   $('#nextActions').classList.add('hidden');
-  $('#goodBtn').textContent = '✓ Goed';
+  $('#goodBtn').textContent = '✓ Correct';
   $('#showActions').classList.toggle('hidden', typeOn);
   $('#typeActions').classList.toggle('hidden', !typeOn);
   if (typeOn) { const inp = $('#typeInput'); inp.value = ''; inp.focus(); }
-  $('#kbHint').textContent = typeOn ? 'enter = check' : 'spatie = toon · ← = fout · → = goed';
+  $('#kbHint').textContent = typeOn ? 'enter = check' : 'space = show · ← = wrong · → = correct';
 }
 
 function showAnswer() {
@@ -510,15 +510,15 @@ function check() {
   const fb = $('#typeFb');
   fb.classList.remove('hidden');
   if (norm(guess) && norm(guess) === norm(card.fr)) {
-    fb.textContent = '✓ Goed!'; fb.style.color = 'var(--done)';
+    fb.textContent = '✓ Correct!'; fb.style.color = 'var(--done)';
     $('#nextActions').classList.remove('hidden');
   } else if (norm(guess) && deacc(norm(guess)) === deacc(norm(card.fr))) {
-    fb.textContent = '≈ Bijna — let op de accenten'; fb.style.color = 'var(--done)';
+    fb.textContent = '≈ Almost — mind the accents'; fb.style.color = 'var(--done)';
     $('#nextActions').classList.remove('hidden');
   } else {
-    fb.textContent = norm(guess) ? `Jij typte: ${guess}` : 'Geen antwoord';
+    fb.textContent = norm(guess) ? `You typed: ${guess}` : 'No answer';
     fb.style.color = 'var(--bad)';
-    $('#goodBtn').textContent = '✓ Toch goed';
+    $('#goodBtn').textContent = '✓ Count it correct';
     $('#judgeActions').classList.remove('hidden');
   }
 }
@@ -530,7 +530,7 @@ function judge(good) {
   bumpWrong(card.id, good ? -1 : 1);
   if (good) {
     nGood++;
-    if (!isTest) markLearned(card.slug || lessons[current].slug, card.id);  // toets telt niet mee
+    if (!isTest) markLearned(card.slug || lessons[current].slug, card.id);  // test doesn't count
   } else {
     nBad++;
     if (!isTest && !inRetry) retryQueue.push(card);
@@ -543,17 +543,17 @@ $('#badBtn').onclick = () => judge(false);
 function endSession() {
   if (isTest) {
     const pct = Math.round(100 * nGood / roundTotal);
-    $('#doneSummary').textContent = `${pct >= 80 ? '🎉 ' : ''}Toets: ${nGood} / ${roundTotal} goed — ${pct}%`;
-    $('#doneDetail').textContent = 'telt niet mee voor progress';
+    $('#doneSummary').textContent = `${pct >= 80 ? '🎉 ' : ''}Test: ${nGood} / ${roundTotal} correct — ${pct}%`;
+    $('#doneDetail').textContent = "doesn't count towards progress";
   } else if (lastMode === 'weak') {
     const left = weakPool().length;
-    $('#doneSummary').textContent = nBad === 0 ? '🎉 Alles goed!' : `Klaar — ${nGood} goed, ${nBad} fout`;
-    $('#doneDetail').textContent = left ? `nog ${left} lastige kaarten` : 'geen lastige kaarten meer 💪';
+    $('#doneSummary').textContent = nBad === 0 ? '🎉 All correct!' : `Done — ${nGood} correct, ${nBad} wrong`;
+    $('#doneDetail').textContent = left ? `${left} tricky cards left` : 'no tricky cards left 💪';
   } else {
     const l = lessons[current];
     const d = l.cards.filter(c => learnedSet(l.slug).has(c.id)).length;
-    $('#doneSummary').textContent = nBad === 0 ? '🎉 Alles goed!' : `Klaar — ${nGood} goed, ${nBad} fout`;
-    $('#doneDetail').textContent = `Les ${l.title}: ${d} / ${l.total} geleerd`;
+    $('#doneSummary').textContent = nBad === 0 ? '🎉 All correct!' : `Done — ${nGood} correct, ${nBad} wrong`;
+    $('#doneDetail').textContent = `Lesson ${l.title}: ${d} / ${l.total} learned`;
   }
   show('done');
 }
@@ -562,7 +562,7 @@ $('#backBtn').onclick = () => renderPick();
 
 document.addEventListener('keydown', e => {
   if ($('#session').classList.contains('hidden')) return;
-  if (e.target === $('#typeInput')) {            // typen: alleen enter afvangen
+  if (e.target === $('#typeInput')) {            // typing: only capture enter
     if (e.key === 'Enter') { e.preventDefault(); check(); }
     return;
   }
@@ -575,7 +575,7 @@ document.addEventListener('keydown', e => {
 async function load() {
   lessons = await (await fetch('lessons.json')).json();
   current = 0;
-  if (!lessons.length) { $('#pickCount').textContent = 'Geen lessen.'; return; }
+  if (!lessons.length) { $('#pickCount').textContent = 'No lessons.'; return; }
   renderPick();
 }
 load();
@@ -613,9 +613,9 @@ def main():
         f.write(solid_png(512, ACCENT))
 
     cards = sum(l["total"] for l in lessons)
-    print(f"Built site/ — {len(lessons)} lessen, {cards} kaarten.")
+    print(f"Built site/ — {len(lessons)} lessons, {cards} cards.")
     for l in lessons:
-        print(f"  {l['title']}: {l['total']} kaarten")
+        print(f"  {l['title']}: {l['total']} cards")
     print("Preview: ./run.sh -> http://localhost:8002")
     print("Deploy:  ./deploy.sh")
 
